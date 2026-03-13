@@ -4,7 +4,8 @@ An end-to-end DevOps portfolio project showcasing a production-style stack:
 
 - **Backend**: FastAPI, PostgreSQL, SQLAlchemy, JWT auth, AI anomaly detection (IsolationForest)
 - **Frontend**: React (Vite + TypeScript), Tailwind CSS
-- **Infra**: Docker, `docker-compose`, GitHub Actions CI
+- **Infra**: Docker, `docker-compose`, GitHub Actions CI, Kubernetes
+- **Observability**: Prometheus metrics, Grafana dashboards, structured logging
 
 ### Features
 
@@ -18,7 +19,7 @@ An end-to-end DevOps portfolio project showcasing a production-style stack:
 ### Architecture Overview
 
 - `backend/`: FastAPI app
-  - `app/main.py`: app factory + routers + CORS
+  - `app/main.py`: app factory + routers + CORS + Prometheus `/metrics`
   - `app/models.py`: `User`, `Pipeline`, `PipelineRun`, `RunMetric`
   - `app/schemas.py`: Pydantic request/response models
   - `app/services/`: `auth_service`, `pipeline_service`, `anomaly_service`
@@ -26,8 +27,10 @@ An end-to-end DevOps portfolio project showcasing a production-style stack:
   - DB: PostgreSQL via SQLAlchemy
 - `frontend/`: React + TS + Tailwind
   - Vite-based SPA consuming backend APIs
-- `docker-compose.yml`: runs `db`, `backend`, and `frontend`
+- `docker-compose.yml`: runs `db`, `backend`, `frontend`, `prometheus`, and `grafana`
 - `.github/workflows/ci.yml`: backend tests, frontend lint+build
+- `monitoring/prometheus.yml`: local Prometheus scrape configuration
+- `k8s/`: production-style Kubernetes manifests (namespace, backend, frontend, Postgres, Prometheus, Grafana, ingress)
 
 ### Local Development
 
@@ -68,8 +71,12 @@ Set `VITE_API_BASE_URL` (e.g. in `.env` or command line) to point to your backen
 docker compose up --build
 ```
 
-- Backend: `http://localhost:8000`
+- Backend: `http://localhost:8000` (API + `/docs` + `/metrics`)
 - Frontend: `http://localhost:5173`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` (default: `admin` / `admin`)
+
+In Grafana, add Prometheus as a data source (`http://prometheus:9090`) and build dashboards for the `backend` job (latency, error rates, etc.).
 
 ### CI/CD Integration (GitHub Actions Example)
 
@@ -92,6 +99,22 @@ The workflow in `.github/workflows/ci.yml`:
 - Installs frontend dependencies, runs `npm run lint` and `npm run build`
 
 You can extend this with deploy jobs (e.g. Docker push, Kubernetes, SSH to VM).
+
+### Kubernetes Deployment
+
+Kubernetes manifests live in `k8s/` and target a namespace `ai-cicd-monitor`:
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/postgres.yaml
+kubectl apply -f k8s/backend.yaml
+kubectl apply -f k8s/frontend.yaml
+kubectl apply -f k8s/monitoring.yaml
+kubectl apply -f k8s/ingress.yaml
+```
+
+- Backend/Frontend images are referenced as `your-docker-registry/ai-cicd-backend:latest` and `your-docker-registry/ai-cicd-frontend:latest` — push your built images there and update as needed.
+- Ingress assumes an NGINX ingress controller and host `ai-cicd.local` (adjust to your environment and add a local DNS entry if necessary).
 
 ### Screenshots
 
