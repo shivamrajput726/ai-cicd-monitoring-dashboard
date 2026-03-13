@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     backend_cors_origins: list[str] = ["http://localhost:5173"]
 
-    database_url: str = "postgresql://app:app@db:5432/app"
+    database_url: str = "postgresql+psycopg://app:app@db:5432/app"
 
     jwt_secret_key: str = "CHANGE_ME_SECRET"
     jwt_algorithm: str = "HS256"

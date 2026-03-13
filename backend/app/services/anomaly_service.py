@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 from typing import Iterable
 
-import numpy as np
-from sklearn.ensemble import IsolationForest
+import math
 from sqlalchemy.orm import Session
 
 from app.models import PipelineRun
@@ -19,19 +20,26 @@ def compute_anomaly_scores(db: Session, pipeline_id: int | None = None) -> list[
     if not runs:
         return []
 
-    durations = np.array([[r.duration_seconds] for r in runs])
-    model = IsolationForest(contamination=0.1, random_state=42)
-    model.fit(durations)
-    scores = model.decision_function(durations)
-    predictions = model.predict(durations)
+    durations = [float(r.duration_seconds) for r in runs if r.duration_seconds is not None]
+    if len(durations) < 5:
+        # Not enough history to score anomalies robustly
+        return [AnomalyScore(run_id=r.id, score=0.0, is_anomaly=False) for r in runs]
+
+    mean = sum(durations) / len(durations)
+    variance = sum((d - mean) ** 2 for d in durations) / (len(durations) - 1)
+    std = math.sqrt(variance) if variance > 0 else 0.0
 
     result: list[AnomalyScore] = []
-    for run, score, pred in zip(runs, scores, predictions, strict=False):
+    for run in runs:
+        d = float(run.duration_seconds or 0.0)
+        z = (d - mean) / std if std > 0 else 0.0
+        # Simple statistical rule: |z| >= 2.5 flags anomaly
+        is_anomaly = abs(z) >= 2.5
         result.append(
             AnomalyScore(
                 run_id=run.id,
-                score=float(score),
-                is_anomaly=pred == -1,
+                score=float(z),
+                is_anomaly=is_anomaly,
             )
         )
     return result
