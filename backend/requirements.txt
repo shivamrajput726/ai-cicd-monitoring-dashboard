@@ -5,7 +5,6 @@ psycopg[binary]==3.2.13
 # Use a version range so Python 3.14 installs wheels (no Rust build)
 pydantic>=2.11,<3
 pydantic-settings>=2.10,<3
-email_validator==2.1.0
 python-jose==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.9
